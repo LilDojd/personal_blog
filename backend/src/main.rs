@@ -4,10 +4,11 @@ use actix_web::{
     web::{Data, Path},
     App, HttpResponse, HttpServer, Responder,
 };
+use uuid::Uuid;
 use validator::Validate;
 
-use crate::db::Database;
 use crate::models::post::{NewBlogPost, UpdateBlogPost};
+use crate::{db::Database, models::BlogPost};
 mod db;
 mod models;
 
@@ -17,17 +18,33 @@ async fn get_home() -> impl Responder {
 }
 
 #[get("/blog")]
-async fn get_blogs() -> impl Responder {
-    HttpResponse::Ok().body("Blogs!")
+async fn get_blogs(db: Data<Database>) -> impl Responder {
+    let blogposts = db.get_all_blogposts().await;
+    match blogposts {
+        Some(found_blogs) => HttpResponse::Ok().body(format!("{:?}", found_blogs)),
+        None => HttpResponse::Ok().body("Error!"),
+    }
 }
 
 #[post("/postblog")]
-async fn post_blog(body: Json<NewBlogPost>) -> impl Responder {
+async fn post_blog(body: Json<NewBlogPost>, db: Data<Database>) -> impl Responder {
     let is_valid = body.validate();
     match is_valid {
         Ok(_) => {
             let post_title = body.title.clone();
-            HttpResponse::Ok().body(format!("Post entered is {post_title}"))
+            let mut buffer = Uuid::encode_buffer();
+            let new_uuid = Uuid::new_v4().simple().encode_lower(&mut buffer);
+
+            let new_blogpost = db
+                .add_blogpost(BlogPost::new(String::from(new_uuid), post_title))
+                .await;
+
+            match new_blogpost {
+                Some(created) => {
+                    HttpResponse::Ok().body(format!("Created new blogpost: {:?}", created))
+                }
+                None => HttpResponse::Ok().body("Error posting blogpost"),
+            }
         }
         Err(_) => HttpResponse::Ok().body("Post name required"),
     }
@@ -43,7 +60,7 @@ async fn update_blog(update_blogpost_url: Path<UpdateBlogPost>) -> impl Responde
 async fn main() -> std::io::Result<()> {
     let db = Database::init()
         .await
-        .expect("Error conntecting to database");
+        .expect("Error connecting to database");
 
     let db_data = Data::new(db);
 

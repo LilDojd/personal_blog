@@ -8,7 +8,17 @@ pub(crate) struct NewBlogPost {
     pub(crate) title: String,
 }
 
-pub(crate) struct BlogPost;
+#[derive(Validate, Deserialize, Serialize, Debug)]
+pub(crate) struct BlogPost {
+    pub(crate) uuid: String,
+    pub(crate) title: String,
+}
+
+impl BlogPost {
+    pub fn new(uuid: String, title: String) -> BlogPost {
+        BlogPost { uuid, title }
+    }
+}
 
 #[derive(Validate, Deserialize, Serialize)]
 pub(crate) struct UpdateBlogPost {

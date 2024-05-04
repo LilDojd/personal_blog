@@ -1,3 +1,7 @@
 target/
 *.db/
 *.db
+Secrets*.toml
+static/
+dist/
+node_modules/

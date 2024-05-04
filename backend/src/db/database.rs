@@ -2,6 +2,8 @@ use surrealdb::engine::remote::ws::{Client, Ws};
 use surrealdb::opt::auth::Root;
 use surrealdb::{Error, Surreal};
 
+use crate::models::BlogPost;
+
 #[derive(Clone)]
 pub struct Database {
     pub client: Surreal<Client>,
@@ -24,5 +26,26 @@ impl Database {
             name_space: String::from("surreal"),
             db_name: String::from("back"),
         })
+    }
+
+    pub async fn get_all_blogposts(&self) -> Option<Vec<BlogPost>> {
+        let result = self.client.select("back").await;
+        match result {
+            Ok(all_blogposts) => Some(all_blogposts),
+            Err(_) => None,
+        }
+    }
+
+    pub async fn add_blogpost(&self, new_blogpost: BlogPost) -> Option<BlogPost> {
+        let created_blogpost = self
+            .client
+            .create(("back", new_blogpost.uuid.clone()))
+            .content(new_blogpost)
+            .await;
+
+        match created_blogpost {
+            Ok(created) => created,
+            Err(_) => None,
+        }
     }
 }
